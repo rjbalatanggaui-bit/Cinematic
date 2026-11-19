@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="tl">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Now Showing</title>
+  <style>
+    /* ====== PALITAN MO LANG DITO SA JS SA BABA: TITLE, PANGALAN, MENSAHE, VIDEO ====== */
+    :root {
+      --red: #8b0f1a;
+      --red2: #c41e2f;
+      --gold: #f2c14e;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      background: #07070b;
+      color: #fff;
+      font-family: Georgia, 'Times New Roman', serif;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-image: radial-gradient(ellipse at 50% 0%, #2a1018 0%, #07070b 60%);
+    }
+
+    header {
+      text-align: center;
+      padding: 28px 16px 12px;
+      z-index: 3;
+    }
+
+    .marquee {
+      display: inline-block;
+      padding: 10px 28px;
+      border: 3px solid var(--gold);
+      border-radius: 6px;
+      background: #120a0c;
+      box-shadow: 0 0 18px rgba(242, 193, 78, .5), inset 0 0 12px rgba(242, 193, 78, .25);
+      animation: glow 2.4s ease-in-out infinite alternate;
+    }
+
+    .marquee small {
+      display: block;
+      letter-spacing: .35em;
+      font-size: .7rem;
+      color: var(--gold);
+    }
+
+    .marquee h1 {
+      font-size: clamp(1.4rem, 5vw, 2.6rem);
+      color: var(--gold);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    @keyframes glow {
+      from {
+        box-shadow: 0 0 10px rgba(242, 193, 78, .35), inset 0 0 8px rgba(242, 193, 78, .2)
+      }
+
+      to {
+        box-shadow: 0 0 28px rgba(242, 193, 78, .8), inset 0 0 16px rgba(242, 193, 78, .4)
+      }
+    }
+
+    .forwho {
+      margin-top: 10px;
+      color: #d9c9a8;
+      font-style: italic;
+      font-size: .95rem;
+    }
+
+    /* SCREEN + CURTAINS */
+    .stage {
+      position: relative;
+      width: min(960px, 94vw);
+      margin-top: 18px;
+      perspective: 900px;
+    }
+
+    .screen {
+      position: relative;
+      aspect-ratio: 16/9;
+      background: #000;
+      border: 6px solid #1b1b22;
+      border-radius: 6px;
+      box-shadow: 0 0 60px rgba(255, 255, 255, .12), 0 0 0 2px #333;
+      overflow: hidden;
+    }
+
+    .screen video {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: #000;
+    }
+
+    .curtain {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 50%;
+      z-index: 5;
+      transition: transform 2.2s cubic-bezier(.7, 0, .2, 1);
+      background: repeating-linear-gradient(90deg, #5e0a12 0 18px, #a3141f 18px 36px, #7a0d17 36px 54px);
+      box-shadow: inset 0 0 40px rgba(0, 0, 0, .6);
+    }
+
+    .curtain.l {
+      left: 0;
+      transform-origin: left;
+      border-right: 3px solid #3a0509;
+    }
+
+    .curtain.r {
+      right: 0;
+      transform-origin: right;
+      border-left: 3px solid #3a0509;
+    }
+
+    .open .curtain.l {
+      transform: translateX(-100%);
+    }
+
+    .open .curtain.r {
+      transform: translateX(100%);
+    }
+
+    .valance {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 26px;
+      z-index: 6;
+      background: linear-gradient(#a3141f, #5e0a12);
+      border-bottom: 3px solid var(--gold);
+    }
+
+    .playwrap {
+      position: absolute;
+      inset: 0;
+      z-index: 7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity .6s;
+    }
+
+    .open .playwrap {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .playbtn {
+      background: var(--gold);
+      color: #2a1a00;
+      border: none;
+      border-radius: 50px;
+      padding: 16px 34px;
+      font: 700 1.1rem Georgia, serif;
+      letter-spacing: .1em;
+      cursor: pointer;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, .6);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .playbtn:active {
+      transform: scale(.97);
+    }
+
+    /* picker fallback */
+    .picker {
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 10px;
+      text-align: center;
+      padding: 16px;
+      background: #000;
+      color: #bbb;
+    }
+
+    .picker.show {
+      display: flex;
+    }
+
+    .picker label {
+      background: #222;
+      border: 1px dashed #666;
+      padding: 10px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: #fff;
+    }
+
+    .picker input {
+      display: none;
+    }
+
+    /* floor light + seats */
+    .beam {
+      width: min(960px, 94vw);
+      height: 40px;
+      background: radial-gradient(ellipse at top, rgba(255, 255, 255, .15), transparent 70%);
+      margin-top: -4px;
+    }
+
+    .seats {
+      width: min(960px, 94vw);
+      margin: 6px 0 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .seat {
+      width: clamp(18px, 4.2vw, 34px);
+      height: clamp(16px, 3.6vw, 28px);
+      background: linear-gradient(#a3141f, #5e0a12);
+      border-radius: 8px 8px 3px 3px;
+      box-shadow: 0 3px 0 #2a0407;
+    }
+
+    .row:nth-child(2) .seat {
+      transform: scale(1.1);
+    }
+
+    .row:nth-child(3) .seat {
+      transform: scale(1.2);
+    }
+
+    .row:nth-child(4) .seat {
+      transform: scale(1.3);
+    }
+
+    .seat.pair {
+      background: linear-gradient(#f2c14e, #b8892a);
+      box-shadow: 0 3px 0 #6b4d10;
+    }
+
+    .message {
+      display: none;
+      max-width: 640px;
+      text-align: center;
+      padding: 0 20px 40px;
+      font-size: 1.15rem;
+      line-height: 1.6;
+      color: #f3e7cc;
+    }
+
+    .message.show {
+      display: block;
+      animation: fade 1.5s;
+    }
+
+    .message .end {
+      color: var(--gold);
+      letter-spacing: .3em;
+      font-size: .8rem;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+
+    @keyframes fade {
+      from {
+        opacity: 0;
+        transform: translateY(10px)
+      }
+
+      to {
+        opacity: 1;
+        transform: none
+      }
+    }
+
+    /* ===== LIGHTS ===== */
+    .stage {
+      z-index: 2;
+    }
+
+    .spot {
+      position: fixed;
+      top: -10px;
+      width: 300px;
+      height: 75vh;
+      pointer-events: none;
+      z-index: 0;
+      background: linear-gradient(rgba(255, 238, 190, .30), rgba(255, 238, 190, 0));
+      clip-path: polygon(44% 0, 56% 0, 100% 100%, 0 100%);
+      transform-origin: 50% 0;
+      filter: blur(2px);
+    }
+
+    .spot.a {
+      left: 2%;
+      animation: swayA 7s ease-in-out infinite alternate;
+    }
+
+    .spot.b {
+      right: 2%;
+      animation: swayB 8s ease-in-out infinite alternate;
+    }
+
+    @keyframes swayA {
+      from {
+        transform: rotate(-14deg)
+      }
+
+      to {
+        transform: rotate(10deg)
+      }
+    }
+
+    @keyframes swayB {
+      from {
+        transform: rotate(14deg)
+      }
+
+      to {
+        transform: rotate(-10deg)
+      }
+    }
+
+    .bulbs {
+      position: absolute;
+      inset: -10px;
+      pointer-events: none;
+      z-index: 8;
+    }
+
+    .bulb {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      margin: -4px 0 0 -4px;
+      border-radius: 50%;
+      background: #ffe9a8;
+      box-shadow: 0 0 8px 3px rgba(255, 214, 102, .85);
+      animation: blink 1.2s infinite;
+    }
+
+    .bulb.alt {
+      animation-delay: .6s;
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .18
+      }
+    }
+
+    .aisle {
+      width: min(960px, 94vw);
+      display: flex;
+      justify-content: space-between;
+      padding: 0 6px;
+      margin-top: -2px;
+    }
+
+    .aisle i {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #ffcf5a;
+      box-shadow: 0 0 8px 2px rgba(255, 200, 80, .8);
+      animation: blink 2s infinite;
+    }
+
+    .aisle i:nth-child(odd) {
+      animation-delay: 1s;
+    }
+
+    /* ===== BOUQUET INTRO ===== */
+    #gift {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 20px;
+      text-align: center;
+      transition: opacity 1s, visibility 1s;
+      background: radial-gradient(ellipse at 50% 35%, #3a1220 0%, #07070b 70%);
+    }
+
+    #gift.gone {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    #gift h2 {
+      font-size: clamp(1.2rem, 4.5vw, 1.9rem);
+      color: var(--gold);
+      letter-spacing: .06em;
+      font-weight: normal;
+    }
+
+    #gift p {
+      color: #e9d8b8;
+      font-style: italic;
+      max-width: 440px;
+      line-height: 1.5;
+    }
+
+    #gift svg.bq {
+      width: min(260px, 62vw);
+      height: auto;
+      animation: float 3.2s ease-in-out infinite;
+      filter: drop-shadow(0 12px 22px rgba(0, 0, 0, .6));
+    }
+
+    @keyframes float {
+
+      0%,
+      100% {
+        transform: translateY(0) rotate(-1deg)
+      }
+
+      50% {
+        transform: translateY(-10px) rotate(1deg)
+      }
+    }
+
+    #gift button {
+      background: var(--gold);
+      color: #2a1a00;
+      border: none;
+      border-radius: 50px;
+      padding: 14px 30px;
+      font: 700 1rem Georgia, serif;
+      letter-spacing: .08em;
+      cursor: pointer;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, .6);
+    }
+
+    #gift button:active {
+      transform: scale(.97);
+    }
+
+    .petal {
+      position: absolute;
+      top: -30px;
+      width: 14px;
+      height: 18px;
+      background: #ff8fa8;
+      border-radius: 70% 0 70% 0;
+      opacity: .85;
+      animation: fall linear infinite;
+    }
+
+    @keyframes fall {
+      to {
+        transform: translateY(110vh) rotate(540deg);
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="spot a"></div>
+  <div class="spot b"></div>
+
+  <div id="gift">
+    <svg class="bq" viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg" aria-label="bouquet">
+      <defs>
+        <g id="fl">
+          <g fill="currentColor">
+            <ellipse cx="0" cy="-15" rx="9" ry="14" />
+            <ellipse cx="0" cy="-15" rx="9" ry="14" transform="rotate(60)" />
+            <ellipse cx="0" cy="-15" rx="9" ry="14" transform="rotate(120)" />
+            <ellipse cx="0" cy="-15" rx="9" ry="14" transform="rotate(180)" />
+            <ellipse cx="0" cy="-15" rx="9" ry="14" transform="rotate(240)" />
+            <ellipse cx="0" cy="-15" rx="9" ry="14" transform="rotate(300)" />
+          </g>
+          <circle r="8" fill="#f2c14e" />
+        </g>
+        <g id="lf">
+          <path d="M0 0 C 14 -14 34 -14 44 0 C 34 14 14 14 0 0Z" fill="#2f8f4e" />
+        </g>
+      </defs>
+      <!-- stems -->
+      <g stroke="#2f8f4e" stroke-width="5" stroke-linecap="round" fill="none">
+        <path d="M100 150 L62 70" />
+        <path d="M100 150 L100 52" />
+        <path d="M100 150 L138 70" />
+        <path d="M100 150 L36 108" />
+        <path d="M100 150 L164 108" />
+      </g>
+      <use href="#lf" transform="translate(70 118) rotate(200) scale(.9)" />
+      <use href="#lf" transform="translate(130 118) rotate(-20) scale(.9)" />
+      <!-- flowers -->
+      <use href="#fl" x="62" y="66" style="color:#ff6b8b" />
+      <use href="#fl" x="100" y="46" style="color:#e8334f" />
+      <use href="#fl" x="138" y="66" style="color:#ff8fa8" />
+      <use href="#fl" x="36" y="106" style="color:#ffffff" />
+      <use href="#fl" x="164" y="106" style="color:#ffb3c6" />
+      <!-- wrap -->
+      <path d="M40 130 L160 130 L118 228 L82 228Z" fill="#f6e7d0" stroke="#d9c3a0" stroke-width="2" />
+      <path d="M40 130 L100 150 L160 130 L150 146 L100 166 L50 146Z" fill="#ead6b4" />
+      <!-- ribbon -->
+      <path d="M86 176 L114 176 L110 196 L90 196Z" fill="#c41e2f" />
+      <path d="M100 186 L76 172 L78 198Z" fill="#a3141f" />
+      <path d="M100 186 L124 172 L122 198Z" fill="#a3141f" />
+      <circle cx="100" cy="186" r="6" fill="#e8334f" />
+    </svg>
+    <h2 id="giftTitle"></h2>
+    <p id="giftText"></p>
+    <button id="giftBtn">💐 TANGGAPIN</button>
+  </div>
+
+  <header>
+    <div class="marquee">
+      <small>★ NOW SHOWING ★</small>
+      <h1 id="title">Pamagat ng Video</h1>
+    </div>
+    <div class="forwho" id="forwho"></div>
+  </header>
+
+  <div class="stage" id="stage">
+    <div class="bulbs" id="bulbs"></div>
+    <div class="screen">
+      <video id="vid" controls playsinline preload="metadata"></video>
+      <div class="valance"></div>
+      <div class="curtain l"></div>
+      <div class="curtain r"></div>
+      <div class="playwrap"><button class="playbtn" id="play">▶ &nbsp;PANOORIN</button></div>
+    </div>
+  </div>
+  <div class="beam"></div>
+  <div class="aisle" id="aisle"></div>
+
+  <div class="seats" aria-hidden="true" id="seats"></div>
+
+  <div class="message" id="msg">
+    <div class="end">The End</div>
+    <div id="msgtext"></div>
+  </div>
+
+  <script>
+    // ====== DITO KA MAG-EDIT ======
+    const TITLE = "Para Sa'yo";          // pamagat ng "pelikula"
+    const FOR_WHO = "Special Showing para sa Lalove Ko ❤️"; // iwan na blangko ("") kung ayaw
+    const MESSAGE = "Salamat sa panonood. Sana nagustuhan mo! ❤️"; // lalabas pagkatapos ng video ("" kung ayaw)
+    const VIDEO = "Para sayo.mp4";           // pangalan ng video file mo (katabi ng page na ito)
+    const GIFT_TITLE = "May bulaklak para sa'yo 💐";          // pamagat sa bouquet screen
+    const GIFT_TEXT = "Bago ka manood, tanggapin mo muna 'to.";   // maliit na mensahe ("" kung ayaw)
+    // ==============================
+
+    document.title = TITLE;
+    document.getElementById('title').textContent = TITLE;
+    document.getElementById('forwho').textContent = FOR_WHO;
+    document.getElementById('msgtext').textContent = MESSAGE;
+
+    // seats
+    const seats = document.getElementById('seats');
+    for (let r = 0; r < 4; r++) {
+      const row = document.createElement('div'); row.className = 'row';
+      const n = 9 + r;
+      for (let i = 0; i < n; i++) {
+        const s = document.createElement('div'); s.className = 'seat';
+        if (r === 3 && (i === 5 || i === 6)) s.classList.add('pair');
+        row.appendChild(s);
+      }
+      seats.appendChild(row);
+    }
+
+    const vid = document.getElementById('vid');
+    const stage = document.getElementById('stage');
+    // awtomatikong hahanapin ang video: video.mp4, video.mov, video.webm, video.m4v
+    const candidates = [VIDEO, "video.mp4", "video.mov", "video.webm", "video.m4v"]
+      .filter((v, i, a) => v && a.indexOf(v) === i);
+    let ci = 0;
+    vid.src = candidates[ci];
+    vid.addEventListener('error', () => {
+      ci++;
+      if (ci < candidates.length) { vid.src = candidates[ci]; vid.load(); }
+    });
+    document.getElementById('play').addEventListener('click', () => {
+      stage.classList.add('open');
+      setTimeout(() => { vid.play().catch(() => { }); }, 1400);
+    });
+    vid.addEventListener('ended', () => document.getElementById('msg').classList.add('show'));
+
+    // ===== bouquet intro =====
+    document.getElementById('giftTitle').textContent = GIFT_TITLE;
+    document.getElementById('giftText').textContent = GIFT_TEXT;
+    const gift = document.getElementById('gift');
+    for (let i = 0; i < 18; i++) {
+      const p = document.createElement('div'); p.className = 'petal';
+      p.style.left = Math.random() * 100 + 'vw';
+      p.style.animationDuration = (6 + Math.random() * 6) + 's';
+      p.style.animationDelay = (-Math.random() * 10) + 's';
+      p.style.opacity = .5 + Math.random() * .4;
+      gift.appendChild(p);
+    }
+    document.getElementById('giftBtn').addEventListener('click', () => {
+      gift.classList.add('gone');
+      setTimeout(() => gift.remove(), 1100);
+    });
+
+    // ===== lights around the screen =====
+    const bulbs = document.getElementById('bulbs');
+    function bulb(x, y, k) {
+      const b = document.createElement('div'); b.className = 'bulb' + (k % 2 ? ' alt' : '');
+      b.style.left = x + '%'; b.style.top = y + '%'; bulbs.appendChild(b);
+    }
+    for (let i = 0; i <= 24; i++) { bulb(i / 24 * 100, 0, i); bulb(i / 24 * 100, 100, i + 1); }
+    for (let i = 1; i < 12; i++) { bulb(0, i / 12 * 100, i); bulb(100, i / 12 * 100, i + 1); }
+    const aisle = document.getElementById('aisle');
+    for (let i = 0; i < 30; i++) aisle.appendChild(document.createElement('i'));
+  </script>
+</body>
+
+</html>
